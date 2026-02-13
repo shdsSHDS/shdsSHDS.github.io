@@ -2,21 +2,29 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Для тебя ❤️</title>
+  <title>Валентинка для Алины ❤️</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
       margin: 0;
       min-height: 100vh;
-      background: linear-gradient(135deg, #ff758c, #ff7eb3);
+      background: linear-gradient(-45deg, #ff758c, #ff7eb3, #ff9a9e, #fad0c4);
+      background-size: 400% 400%;
+      animation: bgMove 12s ease infinite;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
       overflow: hidden;
-      color: white;
       text-align: center;
+      color: white;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
 
     .card {
@@ -26,20 +34,17 @@
       border-radius: 24px;
       width: 90%;
       max-width: 420px;
-      animation: fadeIn 1.6s ease;
       box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      animation: fadeIn 1.4s ease;
     }
 
-    h1 {
-      font-size: 28px;
-      margin-bottom: 12px;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    p {
-      font-size: 17px;
-      line-height: 1.4;
-      margin-bottom: 18px;
-    }
+    h1 { font-size: 24px; margin-bottom: 12px; }
+    p { font-size: 17px; line-height: 1.4; }
 
     button {
       background: #ffffff;
@@ -49,15 +54,8 @@
       font-size: 18px;
       border-radius: 999px;
       cursor: pointer;
-      width: 100%;
-      max-width: 280px;
-    }
-
-    .secret {
-      display: none;
-      margin-top: 22px;
-      font-size: 17px;
-      animation: fadeIn 1.2s ease;
+      margin: 8px;
+      transition: transform 0.2s;
     }
 
     .heart {
@@ -65,11 +63,6 @@
       bottom: -20px;
       font-size: 18px;
       animation: floatUp linear infinite;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(25px); }
-      to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes floatUp {
@@ -80,70 +73,119 @@
 </head>
 <body>
 
-<div class="card">
-  <h1>С Днём Святого Валентина ❤️</h1>
-  <p>У меня есть к тебе один важный вопрос…</p>
+<div class="card" id="card">
+  <h1>Аружан, ты любишь меня? ❤️</h1>
+  <button id="yesBtn">Да ❤️</button>
+  <button id="noBtn">Нет 💔</button>
+</div>
 
-  <button onclick="showLove()">Ты будешь моей валентинкой? 💖</button>
-
-  <div class="secret" id="secret">
-    💌
-    <p>
-      Ты делаешь этот мир теплее просто тем, что ты есть.  
-      Я очень ценю тебя и хочу, чтобы ты была рядом ❤️
-    </p>
-  </div>
+<div class="card" id="final" style="display:none;">
+  <h1>Я знал 😌❤️</h1>
+  <p>Спасибо, что ты есть.</p>
 </div>
 
 <script>
-  let audioStarted = false;
-  let audioCtx;
-
-  function playMusic() {
+  // 🎵 Музыка с реверберацией
+  let audioCtx, isPlaying = false;
+  function startMusic() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = audioCtx.createGain();
+    master.gain.value = 0.18;
 
-    const notes = [261.6, 329.6, 392.0, 523.3]; // C E G C
-    let time = audioCtx.currentTime;
+    const reverb = audioCtx.createConvolver();
+    master.connect(reverb);
+    reverb.connect(audioCtx.destination);
 
-    notes.forEach(freq => {
+    const impulse = audioCtx.createBuffer(2, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    for (let i = 0; i < impulse.numberOfChannels; i++) {
+      const channel = impulse.getChannelData(i);
+      for (let j = 0; j < channel.length; j++) {
+        channel[j] = (Math.random()*2-1) * Math.pow(1 - j / channel.length, 2);
+      }
+    }
+    reverb.buffer = impulse;
+
+    const bassNotes = [110, 130.8, 98, 146.8];       
+    const chordProgression = [
+      [220,261.6,329.6],
+      [196,246.9,293.7],
+      [174.6,220,261.6],
+      [196,246.9,293.7]
+    ];
+    const leadNotes = [659.3,587.3,523.3,587.3,659.3,698.5];
+
+    let step = 0;
+    setInterval(() => {
+      playNote(bassNotes[step % bassNotes.length],0.7,"sine",0.12);
+      chordProgression[step % chordProgression.length].forEach(f=>playNote(f,1.2,"triangle",0.08));
+      playNote(leadNotes[step % leadNotes.length],0.4,"sine",0.1);
+      step++;
+    },1000);
+
+    function playNote(freq,duration,type,volume){
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-
-      osc.type = "sine";
+      osc.type = type;
       osc.frequency.value = freq;
-
-      gain.gain.setValueAtTime(0, time);
-      gain.gain.linearRampToValueAtTime(0.15, time + 0.1);
-      gain.gain.linearRampToValueAtTime(0, time + 0.8);
-
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(time);
-      osc.stop(time + 0.8);
-
-      time += 0.8;
-    });
-  }
-
-  function showLove() {
-    document.getElementById('secret').style.display = 'block';
-
-    if (!audioStarted) {
-      playMusic();
-      audioStarted = true;
+      gain.gain.setValueAtTime(0,audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(volume,audioCtx.currentTime+0.05);
+      gain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+duration);
+      osc.connect(gain).connect(master);
+      osc.start();
+      osc.stop(audioCtx.currentTime+duration);
     }
   }
 
   // Сердечки
-  setInterval(() => {
-    const heart = document.createElement('div');
-    heart.className = 'heart';
-    heart.textContent = '❤️';
-    heart.style.left = Math.random() * 100 + 'vw';
-    heart.style.animationDuration = (5 + Math.random() * 3) + 's';
-    document.body.appendChild(heart);
-    setTimeout(() => heart.remove(), 8000);
-  }, 500);
+  setInterval(()=>{
+    const h = document.createElement("div");
+    h.className="heart";
+    h.textContent="❤️";
+    h.style.left = Math.random()*100+"vw";
+    h.style.animationDuration=(5+Math.random()*3)+"s";
+    document.body.appendChild(h);
+    setTimeout(()=>h.remove(),8000);
+  },500);
+
+  // Кнопки Да / Нет с шутливым эффектом
+  const yesBtn = document.getElementById("yesBtn");
+  const noBtn = document.getElementById("noBtn");
+  let yesSize=18, noSize=18;
+
+  function updateButtons() {
+    yesSize += 2;
+    noSize = Math.max(12,noSize-2);
+    yesBtn.style.fontSize=yesSize+"px";
+    noBtn.style.fontSize=noSize+"px";
+  }
+
+  yesBtn.addEventListener("click", updateButtons);
+  noBtn.addEventListener("click", updateButtons);
+
+  noBtn.addEventListener("click",()=>{
+    noBtn.style.transform=`translate(${Math.random()*20-10}px, ${Math.random()*20-10}px)`;
+    if(navigator.vibrate) navigator.vibrate(30);
+  });
+
+  // Финальный экран при двойном клике на Да
+  yesBtn.addEventListener("dblclick",()=>{
+    document.getElementById("card").style.display="none";
+    document.getElementById("final").style.display="block";
+  });
+
+  // Долгое нажатие — секретное сообщение
+  let pressTimer;
+  document.body.addEventListener("touchstart",()=>{
+    pressTimer=setTimeout(()=>alert("Ты мой самый тёплый секрет ❤️"),800);
+  });
+  document.body.addEventListener("touchend",()=>clearTimeout(pressTimer));
+
+  // Старт музыки при первом клике
+  yesBtn.addEventListener("click",()=>{if(!isPlaying){startMusic(); isPlaying=true;}});
+  noBtn.addEventListener("click",()=>{if(!isPlaying){startMusic(); isPlaying=true;}});
 </script>
 
 </body>
 </html>
+
+
